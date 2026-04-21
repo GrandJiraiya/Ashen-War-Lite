@@ -1,65 +1,49 @@
 <script>
-// ============== ASHEn WAR LITE - DEBUG VERSION ==============
-
-console.log("🚀 app.js LOADED successfully");
+// ============== ASHEn WAR LITE - ULTRA DEBUG VERSION ==============
+console.log("%c🚀 app.js LOADED - Version 2026-04-21 DEBUG", "color: lime; font-size: 16px;");
 
 let currentPlayerName = null;
 let currentState = null;
 
-// ====================== PLAYER NAME ======================
 function getPlayerName() {
-  console.log("👤 getPlayerName() called");
-  if (currentPlayerName) {
-    console.log("   → Using cached name:", currentPlayerName);
-    return currentPlayerName;
-  }
+  console.log("👤 getPlayerName called");
+  if (currentPlayerName) return currentPlayerName;
   const urlParams = new URLSearchParams(window.location.search);
   let player = urlParams.get('player') || localStorage.getItem('player_name');
-  if (!player) {
-    console.log("   → No name found, prompting...");
-    player = prompt("Enter your player name:", "CrashOutCrypto_" + Math.floor(Math.random()*999));
-  }
+  if (!player) player = prompt("Enter player name:", "CrashOutCrypto");
   currentPlayerName = player.trim();
   localStorage.setItem('player_name', currentPlayerName);
-  console.log("   → Final player name:", currentPlayerName);
+  console.log("✅ Player name set to:", currentPlayerName);
   return currentPlayerName;
 }
 
-// ====================== API HELPER ======================
 async function api(endpoint, method = "GET", body = null) {
-  console.log(`📡 API CALL → ${method} ${endpoint}`, body ? body : '');
+  console.log(`📡 API → ${method} ${endpoint}`, body || '');
   const playerName = getPlayerName();
-  let url = endpoint;
-  if (!url.includes("?")) url += "?";
-  else url += "&";
-  url += "player_name=" + encodeURIComponent(playerName);
+  let url = endpoint + (endpoint.includes("?") ? "&" : "?") + "player_name=" + encodeURIComponent(playerName);
 
-  const options = { method, headers: {} };
-  if (body) {
-    options.headers["Content-Type"] = "application/json";
-    options.body = JSON.stringify(body);
-  }
+  const res = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : null
+  });
 
-  const res = await fetch(url, options);
   const data = await res.json();
-  console.log(`📥 API RESPONSE (${res.status}) →`, data);
+  console.log(`📥 API RESPONSE ${res.status}:`, data);
 
   if (!res.ok) {
-    console.error("❌ API ERROR:", data);
-    throw new Error(data.error || "API error");
+    alert("API ERROR: " + (data.error || "Unknown error"));
+    throw new Error(data.error);
   }
   return data;
 }
 
-// ====================== RENDER (with debug) ======================
 function renderState(state) {
-  console.log("🎨 renderState() called with:", state);
+  console.log("🎨 renderState called with has_run =", !!state.has_run, state);
   currentState = state;
   const hasRun = !!state.has_run;
 
-  console.log("   → has_run =", hasRun);
-
-  // Toggle screens
+  // FORCE screen switch
   const classScreen = document.getElementById("class-selection");
   const gameScreen = document.getElementById("game-ui");
 
@@ -67,13 +51,11 @@ function renderState(state) {
   if (gameScreen) gameScreen.classList.toggle("hidden", !hasRun);
 
   console.log("   → Class screen hidden:", hasRun);
-  console.log("   → Game UI shown:", hasRun);
+  console.log("   → Game UI visible:", !gameScreen.classList.contains("hidden"));
 
   if (!hasRun) return;
 
-  // Rest of rendering (stats, enemy, etc.)
-  console.log("   → Rendering full game UI");
-  // ... (the rest of your render code remains the same)
+  // Player stats
   const p = state.player || {};
   document.getElementById("player-name").textContent = p.name || getPlayerName();
   document.getElementById("player-class").textContent = (p.class || "").toUpperCase();
@@ -81,9 +63,11 @@ function renderState(state) {
   document.getElementById("player-gold").textContent = p.gold || 0;
   document.getElementById("player-room").textContent = state.room || 0;
 
-  const hpPercent = Math.max(0, Math.min(100, (p.hp || 0) / (p.max_hp || 100) * 100));
+  // HP bar
+  const hpPercent = Math.max(0, Math.min(100, ((p.hp || 0) / (p.max_hp || 100)) * 100));
   document.getElementById("hp-bar").style.width = hpPercent + "%";
 
+  // Enemy
   const enemySec = document.getElementById("enemy-section");
   if (state.enemy) {
     enemySec.classList.remove("hidden");
@@ -93,82 +77,49 @@ function renderState(state) {
     enemySec.classList.add("hidden");
   }
 
-  const logEl = document.getElementById("battle-log");
-  logEl.innerHTML = (state.battle_log || []).map(l => `<div class="mb-1">${l}</div>`).join("");
-
-  const rewardSec = document.getElementById("reward-section");
-  if (state.reward_pending && state.last_reward) {
-    rewardSec.classList.remove("hidden");
-    const html = state.last_reward.map((item, i) => `
-      <button onclick="chooseReward(${i})" class="w-full bg-emerald-700 hover:bg-emerald-600 py-4 rounded-xl text-left px-6">
-        ${item.name} <span class="text-xs text-emerald-300">(${item.type})</span>
-      </button>`).join("");
-    document.getElementById("reward-options").innerHTML = html;
-  } else {
-    rewardSec.classList.add("hidden");
-  }
-
-  document.getElementById("run-over-section").classList.toggle("hidden", !state.run_over);
+  console.log("✅ Full game UI should now be visible!");
 }
 
 // ====================== ACTIONS ======================
 async function startNewRun(heroClass) {
-  console.log("🔥 startNewRun called with class:", heroClass);
+  console.log("🔥 startNewRun clicked with class:", heroClass);
+  alert("Starting new run as " + heroClass + "… (check console)");
   try {
     const data = await api("/api/game/new-run", "POST", { heroClass });
-    console.log("✅ New run API succeeded, rendering...");
+    console.log("✅ New run success:", data);
     renderState(data);
   } catch (e) {
-    console.error("💥 startNewRun FAILED:", e);
-    alert("Could not start run: " + e.message);
+    console.error("💥 startNewRun failed:", e);
+    alert("Failed to start run: " + e.message);
   }
 }
 
 async function fight() {
-  try {
-    const data = await api("/api/game/fight", "POST", { action: "attack" });
-    renderState(data);
-  } catch (e) { console.error(e); }
+  try { const data = await api("/api/game/fight", "POST", { action: "attack" }); renderState(data); } catch(e){console.error(e);}
 }
 
 async function chooseReward(choice) {
-  try {
-    const data = await api("/api/game/reward", "POST", { choice });
-    renderState(data);
-  } catch (e) { console.error(e); }
+  try { const data = await api("/api/game/reward", "POST", { choice }); renderState(data); } catch(e){console.error(e);}
 }
 
 async function resetRun() {
-  if (confirm("End this run?")) {
-    await api("/api/game/reset", "POST", {});
-    location.reload();
-  }
-}
-
-async function submitToLeaderboard() {
-  try {
-    const data = await api("/api/run/submit", "POST", {});
-    alert("✅ Submitted to leaderboard!");
-  } catch (e) {
-    alert(e.message);
-  }
+  if (confirm("Reset run?")) location.reload();
 }
 
 // ====================== INIT ======================
 async function initGame() {
-  console.log("🚀 initGame() started");
+  console.log("🚀 initGame started");
   getPlayerName();
   try {
     const state = await api("/api/game/state");
-    console.log("📥 Initial state loaded");
     renderState(state);
   } catch (e) {
-    console.error("💥 Initial state load FAILED:", e);
+    console.error("💥 initGame failed:", e);
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("📄 DOM fully loaded");
+  console.log("📄 DOM ready - initializing game");
   initGame();
 });
 </script>
