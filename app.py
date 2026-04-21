@@ -1,6 +1,6 @@
-# app.py
-# FULLY UPDATED & COMPLETE for Ashen-War-Lite + Supabase
-# Replace your entire current app.py with this file
+import os
+print("ENV CHECK → SUPABASE_URL present:", bool(os.getenv("SUPABASE_URL")))
+print("ENV CHECK → SUPABASE_KEY present:", bool(os.getenv("SUPABASE_KEY")))
 
 from flask import Flask, request, jsonify, render_template
 import os
