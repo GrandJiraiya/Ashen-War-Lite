@@ -373,6 +373,7 @@ def shop_action(state: dict, action: str) -> dict:
 
 
 def state_for_client(state: Optional[dict]) -> dict:
+    """Convert internal game state into exactly what the frontend (app.js) expects"""
     if not state:
         return {
             "has_run": False,
@@ -380,37 +381,16 @@ def state_for_client(state: Optional[dict]) -> dict:
         }
 
     player = get_player(state)
-    enemy = get_enemy(state)
-    spell = CLASS_DATA[player.hero_class]["spell"]
-
     return {
         "has_run": True,
-        "classes": CLASS_DATA,
-        "player": {
-            "class": player.class_label,
-            "class_key": player.hero_class,
-            "level": player.level,
-            "room": player.room,
-            "hp": player.hp,
-            "max_hp": player.total_max_hp(),
-            "mana": player.mana,
-            "max_mana": player.max_mana,
-            "attack": player.total_attack(),
-            "defense": player.total_defense(),
-            "crit": int(player.total_crit() * 100),
-            "gold": player.gold,
-            "potions": player.potions,
-            "xp": player.xp,
-            "xp_next": player.level * 30,
-            "spell": spell,
-            "gear": player.gear,
-        },
-        "enemy": enemy.to_dict() if enemy else None,
+        "player": player.to_dict(),
+        "enemy": state.get("enemy"),
+        "status": state.get("status", "ready"),
         "battle_log": state.get("battle_log", []),
-        "status": state.get("status"),
         "reward_pending": state.get("reward_pending", False),
         "last_reward": state.get("last_reward"),
         "merchant_quote": state.get("merchant_quote"),
         "run_over": state.get("run_over", False),
-        "victories": state.get("victory_count", 0),
+        "classes": CLASS_DATA,  # still needed for class picker on first load
     }
+    
