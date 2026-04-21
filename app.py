@@ -73,8 +73,8 @@ def get_state():
 # API - Start a brand new run
 @app.post("/api/game/new-run")
 def new_run():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     hero_class = data.get("heroClass")
     if not player_name or hero_class not in {"mage", "warrior", "rogue"}:
         return jsonify({"error": "Invalid player name or class"}), 400
@@ -86,8 +86,8 @@ def new_run():
 # API - Fight / battle action
 @app.post("/api/game/fight")
 def fight():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     action = data.get("action", "attack")
     
     run_state = load_player_run(player_name)
@@ -101,8 +101,8 @@ def fight():
 # API - Choose reward after battle
 @app.post("/api/game/reward")
 def reward():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     choice = data.get("choice")  # 0, 1, or 2 usually
     
     run_state = load_player_run(player_name)
@@ -116,8 +116,8 @@ def reward():
 # API - Gear choice (equip / sell)
 @app.post("/api/game/gear")
 def gear():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     choice = data.get("choice")  # "equip", "sell", index, etc.
     
     run_state = load_player_run(player_name)
@@ -131,8 +131,8 @@ def gear():
 # API - Merchant / shop actions
 @app.post("/api/game/shop")
 def shop():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     action = data.get("action")  # "buy_potion", "sell_item", etc.
     
     run_state = load_player_run(player_name)
@@ -146,8 +146,8 @@ def shop():
 # API - Submit current run to leaderboard
 @app.post("/api/run/submit")
 def submit_run():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     run_state = load_player_run(player_name)
     if run_state:
         submit_to_leaderboard(player_name, run_state)
@@ -157,8 +157,8 @@ def submit_run():
 # API - Manual cloud save (optional button)
 @app.post("/api/save-slot")
 def save_slot():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     run_state = data.get("run_state")
     if player_name and run_state:
         save_player_run(player_name, run_state)
@@ -168,8 +168,8 @@ def save_slot():
 # API - Reset / end current run
 @app.post("/api/game/reset")
 def reset_run():
-    data = request.get_json()
-    player_name = data.get("player_name")
+    data = request.get_json() or {}
+    player_name = data.get("player_name") or request.args.get("player_name")
     if player_name:
         supabase.table("save_slots").update({"run_state": None}).eq("player_name", player_name).execute()
         return jsonify({"success": True})
