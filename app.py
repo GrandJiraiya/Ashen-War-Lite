@@ -22,7 +22,9 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-supabase = get_supabase()
+# Remove the top-level call
+# Just import the function
+from supabase_client import get_supabase
 
 # ====================== SUPABASE HELPERS ======================
 def save_player_run(player_name: str, run_state: dict):
