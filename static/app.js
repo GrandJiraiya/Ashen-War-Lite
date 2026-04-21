@@ -1,170 +1,122 @@
-<!-- Paste this entire file as static/app.js (replace your current one) -->
 <script>
 // ============== ASHEn WAR LITE - FULL FRONTEND (static/app.js) ==============
 
 let currentPlayerName = null;
 let currentState = null;
 
-// ====================== PLAYER NAME HANDLING ======================
+// ====================== PLAYER NAME ======================
 function getPlayerName() {
   if (currentPlayerName) return currentPlayerName;
-
-  // 1. URL param (?player=CrashOutCrypto)
   const urlParams = new URLSearchParams(window.location.search);
-  let player = urlParams.get('player');
-
-  // 2. LocalStorage
-  if (!player) player = localStorage.getItem('player_name');
-
-  // 3. Prompt
+  let player = urlParams.get('player') || localStorage.getItem('player_name');
   if (!player) {
-    player = prompt("Enter your player name (e.g. CrashOutCrypto):", "Guest_" + Math.floor(Math.random() * 9999));
-    if (!player) player = "Guest_" + Math.floor(Math.random() * 9999);
+    player = prompt("Enter your player name:", "CrashOutCrypto_" + Math.floor(Math.random()*999));
   }
-
   currentPlayerName = player.trim();
   localStorage.setItem('player_name', currentPlayerName);
   return currentPlayerName;
 }
 
-// ====================== API HELPER (auto-adds player_name) ======================
+// ====================== API HELPER ======================
 async function api(endpoint, method = "GET", body = null) {
   const playerName = getPlayerName();
-  const url = endpoint + (endpoint.includes("?") ? "&" : "?") + "player_name=" + encodeURIComponent(playerName);
+  let url = endpoint;
+  if (!url.includes("?")) url += "?";
+  else url += "&";
+  url += "player_name=" + encodeURIComponent(playerName);
 
-  const options = {
-    method: method,
-    headers: {}
-  };
-
+  const options = { method, headers: {} };
   if (body) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url, options);
-  const data = await response.json();
-
-  if (!response.ok) {
-    console.error("API Error:", data);
-    throw new Error(data.error || "Server error");
-  }
+  const res = await fetch(url, options);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "API error");
   return data;
 }
 
-// ====================== RENDER THE ENTIRE GAME UI ======================
+// ====================== RENDER (FIXED) ======================
 function renderState(state) {
   currentState = state;
+  const hasRun = !!state.has_run;
 
-  // Show/hide sections based on game state
-  const hasRun = state.has_run || false;
-
-  // Class selection (only show if no active run)
+  // Hide class selection, show game UI
   document.getElementById("class-selection").style.display = hasRun ? "none" : "block";
+  document.getElementById("game-ui").classList.toggle("hidden", !hasRun);
 
   if (!hasRun) return;
 
   // Player stats
-  const player = state.player;
-  document.getElementById("player-name").textContent = player.name || getPlayerName();
-  document.getElementById("player-class").textContent = player.class.toUpperCase();
-  document.getElementById("player-hp").textContent = `${player.hp}/${player.max_hp}`;
-  document.getElementById("player-gold").textContent = player.gold;
+  const p = state.player || {};
+  document.getElementById("player-name").textContent = p.name || getPlayerName();
+  document.getElementById("player-class").textContent = (p.class || "").toUpperCase();
+  document.getElementById("player-hp").textContent = `${p.hp || 0}/${p.max_hp || 100}`;
+  document.getElementById("player-gold").textContent = p.gold || 0;
   document.getElementById("player-room").textContent = state.room || 0;
 
+  // HP bar
+  const hpPercent = Math.max(0, Math.min(100, (p.hp || 0) / (p.max_hp || 100) * 100));
+  document.getElementById("hp-bar").style.width = hpPercent + "%";
+
   // Enemy
+  const enemySec = document.getElementById("enemy-section");
   if (state.enemy) {
-    document.getElementById("enemy-section").style.display = "block";
-    document.getElementById("enemy-name").textContent = state.enemy.name;
-    document.getElementById("enemy-hp").textContent = `${state.enemy.hp}/${state.enemy.max_hp}`;
+    enemySec.classList.remove("hidden");
+    document.getElementById("enemy-name").textContent = state.enemy.name || "Enemy";
+    document.getElementById("enemy-hp").textContent = `${state.enemy.hp || 0}/${state.enemy.max_hp || 100}`;
   } else {
-    document.getElementById("enemy-section").style.display = "none";
+    enemySec.classList.add("hidden");
   }
 
   // Battle log
-  const logContainer = document.getElementById("battle-log");
-  logContainer.innerHTML = state.battle_log.map(msg => `<div>${msg}</div>`).join("");
+  const logEl = document.getElementById("battle-log");
+  logEl.innerHTML = (state.battle_log || []).map(l => `<div class="mb-1">${l}</div>`).join("");
 
-  // Reward screen
-  const rewardSection = document.getElementById("reward-section");
-  if (state.reward_pending) {
-    rewardSection.style.display = "block";
-    // Populate reward choices (assumes 3 options in state.last_reward)
-    const rewardsHTML = state.last_reward.map((item, i) => `
-      <button onclick="chooseReward(${i})" class="reward-btn">
-        ${item.name} (${item.type})
-      </button>
-    `).join("");
-    document.getElementById("reward-options").innerHTML = rewardsHTML;
+  // Reward
+  const rewardSec = document.getElementById("reward-section");
+  if (state.reward_pending && state.last_reward) {
+    rewardSec.classList.remove("hidden");
+    const html = state.last_reward.map((item, i) => `
+      <button onclick="chooseReward(${i})" class="w-full bg-emerald-700 hover:bg-emerald-600 py-4 rounded-xl text-left px-6">
+        ${item.name} <span class="text-xs text-emerald-300">(${item.type})</span>
+      </button>`).join("");
+    document.getElementById("reward-options").innerHTML = html;
   } else {
-    rewardSection.style.display = "none";
+    rewardSec.classList.add("hidden");
   }
 
-  // Merchant / Shop
-  const shopSection = document.getElementById("shop-section");
-  if (state.merchant_quote) {
-    shopSection.style.display = "block";
-    document.getElementById("merchant-quote").textContent = state.merchant_quote;
-  } else {
-    shopSection.style.display = "none";
-  }
-
-  // Run over screen
-  if (state.run_over) {
-    document.getElementById("run-over-section").style.display = "block";
-  } else {
-    document.getElementById("run-over-section").style.display = "none";
-  }
+  // Run over
+  document.getElementById("run-over-section").classList.toggle("hidden", !state.run_over);
 }
 
-// ====================== GAME ACTIONS ======================
+// ====================== ACTIONS ======================
 async function startNewRun(heroClass) {
   try {
     const data = await api("/api/game/new-run", "POST", { heroClass });
     renderState(data);
   } catch (e) {
-    alert("Failed to start run: " + e.message);
+    alert("Could not start run: " + e.message);
   }
 }
 
-async function fight(action = "attack") {
+async function fight() {
   try {
-    const data = await api("/api/game/fight", "POST", { action });
+    const data = await api("/api/game/fight", "POST", { action: "attack" });
     renderState(data);
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) { console.error(e); }
 }
 
-async function chooseReward(choiceIndex) {
+async function chooseReward(choice) {
   try {
-    const data = await api("/api/game/reward", "POST", { choice: choiceIndex });
+    const data = await api("/api/game/reward", "POST", { choice });
     renderState(data);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function handleGear(choice) {
-  try {
-    const data = await api("/api/game/gear", "POST", { choice });
-    renderState(data);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function shopAction(action) {
-  try {
-    const data = await api("/api/game/shop", "POST", { action });
-    renderState(data);
-  } catch (e) {
-    console.error(e);
-  }
+  } catch (e) { console.error(e); }
 }
 
 async function resetRun() {
-  if (confirm("End current run and start fresh?")) {
+  if (confirm("End this run?")) {
     await api("/api/game/reset", "POST", {});
     location.reload();
   }
@@ -173,40 +125,22 @@ async function resetRun() {
 async function submitToLeaderboard() {
   try {
     const data = await api("/api/run/submit", "POST", {});
-    alert("✅ Run submitted to leaderboard!\n" + data.message);
+    alert("✅ Submitted to leaderboard!\n" + (data.message || ""));
   } catch (e) {
-    alert("Failed to submit: " + e.message);
+    alert(e.message);
   }
 }
 
-// ====================== INITIAL LOAD ======================
+// ====================== INIT ======================
 async function initGame() {
-  getPlayerName(); // ensure player name is set
-
+  getPlayerName();
   try {
     const state = await api("/api/game/state");
     renderState(state);
   } catch (e) {
-    console.error("Failed to load game state:", e);
+    console.error(e);
   }
 }
 
-// ====================== EVENT LISTENERS ======================
-document.addEventListener("DOMContentLoaded", () => {
-  // Class buttons
-  document.querySelectorAll(".class-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const heroClass = btn.getAttribute("data-class");
-      startNewRun(heroClass);
-    });
-  });
-
-  // Fight button
-  const fightBtn = document.getElementById("fight-btn");
-  if (fightBtn) fightBtn.addEventListener("click", () => fight("attack"));
-
-  // Other buttons are wired via onclick in renderState (reward/gear) or separate handlers
-
-  initGame();
-});
+document.addEventListener("DOMContentLoaded", initGame);
 </script>
