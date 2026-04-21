@@ -1,27 +1,45 @@
-const classGrid = document.getElementById("class-grid");
-const classPicker = document.getElementById("class-picker");
-const gameBoard = document.getElementById("game-board");
-const heroStats = document.getElementById("hero-stats");
-const gearList = document.getElementById("gear-list");
-const roomTitle = document.getElementById("room-title");
-const statusChip = document.getElementById("status-chip");
-const enemyCard = document.getElementById("enemy-card");
-const battleLog = document.getElementById("battle-log");
-const merchantQuote = document.getElementById("merchant-quote");
-const rewardPreviewBody = document.getElementById("reward-preview-body");
-const battleActions = document.getElementById("battle-actions");
-const rewardActions = document.getElementById("reward-actions");
-const gearActions = document.getElementById("gear-actions");
-const resetRunButton = document.getElementById("reset-run");
+// ============== PLAYER NAME HANDLING (NEW) ==============
+let currentPlayerName = null;
 
+function getPlayerName() {
+  if (currentPlayerName) return currentPlayerName;
+  
+  // Try URL param first (e.g. ?player=CrashOutCrypto)
+  const urlParams = new URLSearchParams(window.location.search);
+  let player = urlParams.get('player');
+  
+  if (!player) {
+    player = localStorage.getItem('player_name');
+  }
+  
+  if (!player) {
+    player = prompt("Enter your player name to start (e.g. CrashOutCrypto):");
+    if (!player) player = "Guest_" + Math.floor(Math.random() * 9999);
+  }
+  
+  currentPlayerName = player.trim();
+  localStorage.setItem('player_name', currentPlayerName);
+  return currentPlayerName;
+}
+
+// ============== UPDATED API HELPER (with player_name) ==============
 async function api(path, method = "GET", body = null) {
+  const playerName = getPlayerName();
+  
   const options = { method, headers: {} };
+  
+  // Add player_name to every request
   if (body) {
     options.headers["Content-Type"] = "application/json";
-    options.body = JSON.stringify(body);
+    options.body = JSON.stringify({ ...body, player_name: playerName });
+  } else if (method === "GET") {
+    const separator = path.includes("?") ? "&" : "?";
+    path += separator + "player_name=" + encodeURIComponent(playerName);
   }
+  
   const response = await fetch(path, options);
   const data = await response.json();
+  
   if (!response.ok) {
     throw new Error(data.error || "Something exploded in the dungeon API.");
   }
