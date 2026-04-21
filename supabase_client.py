@@ -1,13 +1,18 @@
+# supabase_client.py
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # still useful for local dev
 
-supabase: Client = create_client(
-    os.getenv("https://kscqzqryqkjjhtjhwxia.supabase.co"),
-    os.getenv("sb_publishable_0c4EgQus5EdJbwR1lWyH3w_rFl20v6m")
-)
+_supabase_client: Client | None = None
 
-def get_supabase():
-    return supabase
+def get_supabase() -> Client:
+    global _supabase_client
+    if _supabase_client is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY")
+        if not url or not key:
+            raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY environment variables")
+        _supabase_client = create_client(url, key)
+    return _supabase_client
