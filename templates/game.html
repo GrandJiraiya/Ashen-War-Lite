@@ -1,90 +1,136 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>🗡️ Ashen War Dungeon</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  </head>
-  <body>
-    <main class="app-shell">
-      <header class="hero-banner">
-        <div class="header">
-          <h1 class="title">🗡️ Ashen War Lite</h1>
-          <p class="subtitle">Swear your Oath. Fight through the ashen ruins. Loot legendary gear. Bully a boss every 5th floor.</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ashen War Lite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Creepster&family=Press+Start+2P&display=swap');
+    body { font-family: 'Press Start 2P', system-ui; }
+    .title { font-family: 'Creepster', cursive; }
+  </style>
+</head>
+<body class="bg-[#0a0a0a] text-white min-h-screen">
+  <div class="max-w-4xl mx-auto p-4">
+
+    <!-- HEADER -->
+    <div class="text-center mb-8">
+      <div class="text-amber-400 text-sm tracking-widest mb-1">OATH OF WAR • BROWSER PROTOTYPE</div>
+      <h1 class="title text-6xl text-red-500 drop-shadow-lg">ASHEN WAR LITE</h1>
+      <p class="text-gray-400 mt-2 text-lg">Swear your oath. Crawl the ashen ruins. Loot. Fight. Die gloriously.</p>
+    </div>
+
+    <!-- CLASS SELECTION -->
+    <div id="class-selection" class="bg-zinc-900 border border-red-900 rounded-2xl p-8 text-center">
+      <h2 class="text-3xl mb-6 text-amber-300">CHOOSE YOUR CLASS</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <button onclick="startNewRun('mage')" 
+                class="class-btn bg-gradient-to-b from-blue-900 to-blue-700 hover:from-blue-800 hover:to-blue-600 border-2 border-blue-400 rounded-xl p-6 transition-all">
+          <div class="text-4xl mb-2">🧙‍♂️</div>
+          <div class="text-xl font-bold">MAGE</div>
+          <div class="text-xs text-blue-300">High magic • Fragile</div>
+        </button>
+        
+        <button onclick="startNewRun('warrior')" 
+                class="class-btn bg-gradient-to-b from-red-900 to-red-700 hover:from-red-800 hover:to-red-600 border-2 border-red-400 rounded-xl p-6 transition-all">
+          <div class="text-4xl mb-2">🛡️</div>
+          <div class="text-xl font-bold">WARRIOR</div>
+          <div class="text-xs text-red-300">Tank • Brutal melee</div>
+        </button>
+        
+        <button onclick="startNewRun('rogue')" 
+                class="class-btn bg-gradient-to-b from-emerald-900 to-emerald-700 hover:from-emerald-800 hover:to-emerald-600 border-2 border-emerald-400 rounded-xl p-6 transition-all">
+          <div class="text-4xl mb-2">🗡️</div>
+          <div class="text-xl font-bold">ROGUE</div>
+          <div class="text-xs text-emerald-300">Fast • Deadly crits</div>
+        </button>
+      </div>
+      <button onclick="resetRun()" 
+              class="mt-8 text-sm text-gray-400 hover:text-white underline">Reset Run</button>
+    </div>
+
+    <!-- ACTIVE GAME UI -->
+    <div id="game-ui" class="hidden">
+
+      <!-- PLAYER STATUS -->
+      <div class="bg-zinc-900 border border-amber-600 rounded-2xl p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <span id="player-name" class="font-bold text-2xl"></span>
+            <span id="player-class" class="ml-3 text-amber-400 text-sm uppercase tracking-widest"></span>
+          </div>
+          <div class="text-right">
+            <div>Room <span id="player-room" class="text-2xl font-bold text-red-400"></span></div>
+            <div class="text-amber-300">💰 <span id="player-gold" class="font-bold"></span></div>
+          </div>
         </div>
-        <div class="top-actions">
-          <button id="reset-run" class="ghost">Reset Run</button>
+        <div class="h-3 bg-zinc-800 rounded-full overflow-hidden">
+          <div id="hp-bar" class="h-3 bg-red-500 transition-all"></div>
         </div>
-      </header>
+        <div class="flex justify-between text-xs mt-1">
+          <span>HP</span>
+          <span id="player-hp" class="font-mono"></span>
+        </div>
+      </div>
 
-      <section id="class-picker" class="panel class-picker">
-        <h2>Choose Your Class</h2>
-        <div class="class-grid" id="class-grid"></div>
-      </section>
-
-      <section id="game-board" class="game-grid hidden">
-        <aside class="panel stats-panel">
-          <h2>Hero</h2>
-          <div id="hero-stats"></div>
-          <div class="gear-block">
-            <h3>Gear</h3>
-            <div id="gear-list"></div>
+      <!-- ENEMY -->
+      <div id="enemy-section" class="bg-red-950 border border-red-700 rounded-2xl p-6 mb-6 hidden">
+        <div class="flex justify-between items-center">
+          <div class="text-red-400 font-bold text-xl" id="enemy-name"></div>
+          <div class="text-right">
+            <span id="enemy-hp" class="font-mono text-red-300"></span>
           </div>
-        </aside>
+        </div>
+        <button id="fight-btn"
+                onclick="fight('attack')"
+                class="w-full mt-6 bg-red-600 hover:bg-red-700 py-6 text-2xl font-bold rounded-2xl transition-all active:scale-95">
+          ⚔️ ATTACK
+        </button>
+      </div>
 
-        <section class="panel battle-panel">
-          <div class="battle-header">
-            <div>
-              <p class="eyebrow">Current Room</p>
-              <h2 id="room-title">Room 1</h2>
-            </div>
-            <div class="status-chip" id="status-chip">Ready</div>
-          </div>
+      <!-- BATTLE LOG -->
+      <div class="bg-black border border-zinc-700 rounded-2xl p-4 h-52 overflow-y-auto mb-6 text-sm font-mono" id="battle-log">
+        <!-- Filled by JS -->
+      </div>
 
-          <div class="enemy-card" id="enemy-card"></div>
+      <!-- REWARD SECTION -->
+      <div id="reward-section" class="hidden bg-emerald-950 border border-emerald-700 rounded-2xl p-6 mb-6">
+        <h3 class="text-emerald-300 text-center mb-4 text-lg">CHOOSE YOUR LOOT</h3>
+        <div id="reward-options" class="grid grid-cols-1 gap-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
 
-          <div class="action-row" id="battle-actions">
-            <button data-fight="attack">Attack</button>
-            <button data-fight="spell">Cast Spell</button>
-            <button data-fight="potion">Drink Potion</button>
-          </div>
+      <!-- MERCHANT / SHOP -->
+      <div id="shop-section" class="hidden bg-amber-950 border border-amber-700 rounded-2xl p-6 mb-6">
+        <h3 class="text-amber-300 text-center mb-4">🛒 THE MERCHANT APPEARS</h3>
+        <p id="merchant-quote" class="italic text-center text-amber-200 mb-6"></p>
+        <!-- Shop buttons can be added here if you expand shop_action -->
+      </div>
 
-          <div class="action-row reward-row" id="reward-actions">
-            <button data-reward="gear">Random Gear</button>
-            <button data-reward="potion">Potion</button>
-            <button data-reward="heal">Heal 35%</button>
-            <button data-reward="mana">Mana Surge</button>
-          </div>
+      <!-- RUN OVER -->
+      <div id="run-over-section" class="hidden text-center bg-zinc-900 border border-red-800 rounded-2xl p-8">
+        <h2 class="text-4xl text-red-500 mb-4">YOUR RUN HAS ENDED</h2>
+        <button onclick="submitToLeaderboard()" 
+                class="bg-red-600 hover:bg-red-700 px-12 py-6 text-2xl rounded-2xl mb-4 transition-all">
+          🏆 SUBMIT TO LEADERBOARD
+        </button>
+        <button onclick="resetRun()" 
+                class="text-gray-400 underline">Start a new run</button>
+      </div>
 
-          <div class="action-row reward-row" id="gear-actions">
-            <button data-gear="equip">Equip</button>
-            <button data-gear="sell">Sell</button>
-          </div>
+    </div>
+  </div>
 
-          <div class="log-panel">
-            <h3>Battle Log</h3>
-            <ul id="battle-log"></ul>
-          </div>
-        </section>
-
-        <aside class="panel side-panel">
-          <h2>Merchant</h2>
-          <p id="merchant-quote"></p>
-          <div class="action-stack">
-            <button data-shop="buy_potion">Buy Potion (25g)</button>
-            <button data-shop="buy_gear">Buy Random Gear (60g)</button>
-            <button data-shop="leave" class="ghost">Leave Merchant Alone</button>
-          </div>
-
-          <div class="helper-card" id="reward-preview">
-            <h3>Loot Preview</h3>
-            <div id="reward-preview-body">No loose treasure right now.</div>
-          </div>
-        </aside>
-      </section>
-    </main>
-
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
-  </body>
+  <script>
+    // Tailwind script already loaded via CDN
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize Tailwind
+      return initGame();
+    });
+  </script>
+</body>
 </html>
