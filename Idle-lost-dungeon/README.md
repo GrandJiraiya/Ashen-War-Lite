@@ -1,3 +1,5 @@
+#reference file path
+
 # Idle Loot Dungeon
 
 A small browser prototype for an idle-ish dungeon crawler made for GitHub Codespaces.
