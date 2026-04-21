@@ -1,193 +1,212 @@
-// ============== PLAYER NAME HANDLING (NEW) ==============
-let currentPlayerName = null;
+<!-- Paste this entire file as static/app.js (replace your current one) -->
+<script>
+// ============== ASHEn WAR LITE - FULL FRONTEND (static/app.js) ==============
 
+let currentPlayerName = null;
+let currentState = null;
+
+// ====================== PLAYER NAME HANDLING ======================
 function getPlayerName() {
   if (currentPlayerName) return currentPlayerName;
-  
-  // Try URL param first (e.g. ?player=CrashOutCrypto)
+
+  // 1. URL param (?player=CrashOutCrypto)
   const urlParams = new URLSearchParams(window.location.search);
   let player = urlParams.get('player');
-  
+
+  // 2. LocalStorage
+  if (!player) player = localStorage.getItem('player_name');
+
+  // 3. Prompt
   if (!player) {
-    player = localStorage.getItem('player_name');
-  }
-  
-  if (!player) {
-    player = prompt("Enter your player name to start (e.g. CrashOutCrypto):");
+    player = prompt("Enter your player name (e.g. CrashOutCrypto):", "Guest_" + Math.floor(Math.random() * 9999));
     if (!player) player = "Guest_" + Math.floor(Math.random() * 9999);
   }
-  
+
   currentPlayerName = player.trim();
   localStorage.setItem('player_name', currentPlayerName);
   return currentPlayerName;
 }
 
-// ============== UPDATED API HELPER (with player_name) ==============
-async function api(path, method = "GET", body = null) {
+// ====================== API HELPER (auto-adds player_name) ======================
+async function api(endpoint, method = "GET", body = null) {
   const playerName = getPlayerName();
-  
-  const options = { method, headers: {} };
-  
-  // Add player_name to every request
+  const url = endpoint + (endpoint.includes("?") ? "&" : "?") + "player_name=" + encodeURIComponent(playerName);
+
+  const options = {
+    method: method,
+    headers: {}
+  };
+
   if (body) {
     options.headers["Content-Type"] = "application/json";
-    options.body = JSON.stringify({ ...body, player_name: playerName });
-  } else if (method === "GET") {
-    const separator = path.includes("?") ? "&" : "?";
-    path += separator + "player_name=" + encodeURIComponent(playerName);
+    options.body = JSON.stringify(body);
   }
-  
-  const response = await fetch(path, options);
+
+  const response = await fetch(url, options);
   const data = await response.json();
-  
+
   if (!response.ok) {
-    throw new Error(data.error || "Something exploded in the dungeon API.");
+    console.error("API Error:", data);
+    throw new Error(data.error || "Server error");
   }
   return data;
 }
 
-function rarityClass(rarity) {
-  return {
-    Common: "rarity-common",
-    Rare: "rarity-rare",
-    Epic: "rarity-epic",
-    Legendary: "rarity-legendary",
-  }[rarity] || "";
-}
-
-function gearText(item) {
-  if (!item) return "Empty";
-  const crit = item.crit ? `, +${Math.round(item.crit * 100)}% crit` : "";
-  return `<span class="${rarityClass(item.rarity)}">${item.rarity} ${item.name}</span><br><small>+${item.atk} atk, +${item.defense} def, +${item.hp} hp${crit}</small>`;
-}
-
-function renderClassCards(classes) {
-  classGrid.innerHTML = "";
-  Object.entries(classes).forEach(([key, value]) => {
-    const card = document.createElement("button");
-    card.className = "class-card";
-    card.innerHTML = `
-      <h3>${value.label}</h3>
-      <p>HP ${value.hp} · ATK ${value.attack} · DEF ${value.defense} · Crit ${Math.round(value.crit * 100)}%</p>
-      <p><strong>${value.spell.name}</strong></p>
-      <small>${value.spell.description}</small>
-    `;
-    card.addEventListener("click", async () => {
-      const state = await api("/api/new-run", "POST", { heroClass: key });
-      renderState(state);
-    });
-    classGrid.appendChild(card);
-  });
-}
-
+// ====================== RENDER THE ENTIRE GAME UI ======================
 function renderState(state) {
-  renderClassCards(state.classes);
+  currentState = state;
 
-  if (!state.has_run) {
-    classPicker.classList.remove("hidden");
-    gameBoard.classList.add("hidden");
-    return;
-  }
+  // Show/hide sections based on game state
+  const hasRun = state.has_run || false;
 
-  classPicker.classList.add("hidden");
-  gameBoard.classList.remove("hidden");
+  // Class selection (only show if no active run)
+  document.getElementById("class-selection").style.display = hasRun ? "none" : "block";
 
+  if (!hasRun) return;
+
+  // Player stats
   const player = state.player;
-  heroStats.innerHTML = `
-    <div class="stat-line"><span>Class</span><strong>${player.class}</strong></div>
-    <div class="stat-line"><span>Level</span><strong>${player.level}</strong></div>
-    <div class="stat-line"><span>Room</span><strong>${player.room}</strong></div>
-    <div class="stat-line"><span>HP</span><strong>${player.hp}/${player.max_hp}</strong></div>
-    <div class="stat-line"><span>Mana</span><strong>${player.mana}/${player.max_mana}</strong></div>
-    <div class="stat-line"><span>Attack</span><strong>${player.attack}</strong></div>
-    <div class="stat-line"><span>Defense</span><strong>${player.defense}</strong></div>
-    <div class="stat-line"><span>Crit</span><strong>${player.crit}%</strong></div>
-    <div class="stat-line"><span>Gold</span><strong>${player.gold}</strong></div>
-    <div class="stat-line"><span>Potions</span><strong>${player.potions}</strong></div>
-    <div class="stat-line"><span>XP</span><strong>${player.xp}/${player.xp_next}</strong></div>
-    <div class="spell-box">
-      <p class="eyebrow">Spell</p>
-      <strong>${player.spell.name}</strong>
-      <p>${player.spell.description}</p>
-      <small>Mana Cost: ${player.spell.cost}</small>
-    </div>
-  `;
+  document.getElementById("player-name").textContent = player.name || getPlayerName();
+  document.getElementById("player-class").textContent = player.class.toUpperCase();
+  document.getElementById("player-hp").textContent = `${player.hp}/${player.max_hp}`;
+  document.getElementById("player-gold").textContent = player.gold;
+  document.getElementById("player-room").textContent = state.room || 0;
 
-  gearList.innerHTML = ["Weapon", "Armor", "Trinket"]
-    .map((slot) => `<div class="gear-row"><span>${slot}</span><div>${gearText(player.gear[slot])}</div></div>`)
-    .join("");
-
-  roomTitle.textContent = `Room ${player.room}`;
-  statusChip.textContent = state.run_over ? "Defeated" : state.status;
-
+  // Enemy
   if (state.enemy) {
-    enemyCard.innerHTML = `
-      <h3>${state.enemy.is_boss ? "Boss" : "Enemy"}: ${state.enemy.name}</h3>
-      <p>HP ${Math.max(0, state.enemy.hp)} · ATK ${state.enemy.attack} · DEF ${state.enemy.defense}</p>
-    `;
+    document.getElementById("enemy-section").style.display = "block";
+    document.getElementById("enemy-name").textContent = state.enemy.name;
+    document.getElementById("enemy-hp").textContent = `${state.enemy.hp}/${state.enemy.max_hp}`;
   } else {
-    enemyCard.innerHTML = `<h3>No enemy on screen</h3><p>Probably dead. Great for morale.</p>`;
+    document.getElementById("enemy-section").style.display = "none";
   }
 
-  merchantQuote.textContent = state.merchant_quote || "The merchant is polishing a suspiciously cursed helmet.";
+  // Battle log
+  const logContainer = document.getElementById("battle-log");
+  logContainer.innerHTML = state.battle_log.map(msg => `<div>${msg}</div>`).join("");
 
-  battleLog.innerHTML = "";
-  (state.battle_log || []).forEach((entry) => {
-    const li = document.createElement("li");
-    li.textContent = entry;
-    battleLog.appendChild(li);
-  });
-
-  if (state.last_reward) {
-    const reward = state.last_reward;
-    rewardPreviewBody.innerHTML = `
-      <p class="${rarityClass(reward.rarity)}"><strong>${reward.rarity} ${reward.name}</strong></p>
-      <p>${reward.slot}</p>
-      <small>+${reward.atk} atk, +${reward.defense} def, +${reward.hp} hp${reward.crit ? `, +${Math.round(reward.crit * 100)}% crit` : ""}</small>
-    `;
+  // Reward screen
+  const rewardSection = document.getElementById("reward-section");
+  if (state.reward_pending) {
+    rewardSection.style.display = "block";
+    // Populate reward choices (assumes 3 options in state.last_reward)
+    const rewardsHTML = state.last_reward.map((item, i) => `
+      <button onclick="chooseReward(${i})" class="reward-btn">
+        ${item.name} (${item.type})
+      </button>
+    `).join("");
+    document.getElementById("reward-options").innerHTML = rewardsHTML;
   } else {
-    rewardPreviewBody.textContent = "No loose treasure right now.";
+    rewardSection.style.display = "none";
   }
 
-  battleActions.classList.toggle("hidden", state.reward_pending || state.run_over || state.status === "gear");
-  rewardActions.classList.toggle("hidden", !state.reward_pending || state.status === "gear" || state.run_over);
-  gearActions.classList.toggle("hidden", state.status !== "gear" || state.run_over);
+  // Merchant / Shop
+  const shopSection = document.getElementById("shop-section");
+  if (state.merchant_quote) {
+    shopSection.style.display = "block";
+    document.getElementById("merchant-quote").textContent = state.merchant_quote;
+  } else {
+    shopSection.style.display = "none";
+  }
+
+  // Run over screen
+  if (state.run_over) {
+    document.getElementById("run-over-section").style.display = "block";
+  } else {
+    document.getElementById("run-over-section").style.display = "none";
+  }
 }
 
-battleActions.addEventListener("click", async (event) => {
-  const action = event.target.dataset.fight;
-  if (!action) return;
-  const state = await api("/api/fight", "POST", { action });
-  renderState(state);
-});
+// ====================== GAME ACTIONS ======================
+async function startNewRun(heroClass) {
+  try {
+    const data = await api("/api/game/new-run", "POST", { heroClass });
+    renderState(data);
+  } catch (e) {
+    alert("Failed to start run: " + e.message);
+  }
+}
 
-rewardActions.addEventListener("click", async (event) => {
-  const rewardType = event.target.dataset.reward;
-  if (!rewardType) return;
-  const state = await api("/api/reward", "POST", { rewardType });
-  renderState(state);
-});
+async function fight(action = "attack") {
+  try {
+    const data = await api("/api/game/fight", "POST", { action });
+    renderState(data);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-gearActions.addEventListener("click", async (event) => {
-  const decision = event.target.dataset.gear;
-  if (!decision) return;
-  const state = await api("/api/gear", "POST", { decision });
-  renderState(state);
-});
+async function chooseReward(choiceIndex) {
+  try {
+    const data = await api("/api/game/reward", "POST", { choice: choiceIndex });
+    renderState(data);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-document.addEventListener("click", async (event) => {
-  const shopAction = event.target.dataset.shop;
-  if (!shopAction) return;
-  const state = await api("/api/shop", "POST", { action: shopAction });
-  renderState(state);
-});
+async function handleGear(choice) {
+  try {
+    const data = await api("/api/game/gear", "POST", { choice });
+    renderState(data);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-resetRunButton.addEventListener("click", async () => {
-  const state = await api("/api/reset", "POST");
-  renderState(state);
-});
+async function shopAction(action) {
+  try {
+    const data = await api("/api/game/shop", "POST", { action });
+    renderState(data);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-// Initial load with player name
-getPlayerName(); // ensures name is set
-api("/api/state").then(renderState).catch(console.error);
+async function resetRun() {
+  if (confirm("End current run and start fresh?")) {
+    await api("/api/game/reset", "POST", {});
+    location.reload();
+  }
+}
+
+async function submitToLeaderboard() {
+  try {
+    const data = await api("/api/run/submit", "POST", {});
+    alert("✅ Run submitted to leaderboard!\n" + data.message);
+  } catch (e) {
+    alert("Failed to submit: " + e.message);
+  }
+}
+
+// ====================== INITIAL LOAD ======================
+async function initGame() {
+  getPlayerName(); // ensure player name is set
+
+  try {
+    const state = await api("/api/game/state");
+    renderState(state);
+  } catch (e) {
+    console.error("Failed to load game state:", e);
+  }
+}
+
+// ====================== EVENT LISTENERS ======================
+document.addEventListener("DOMContentLoaded", () => {
+  // Class buttons
+  document.querySelectorAll(".class-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const heroClass = btn.getAttribute("data-class");
+      startNewRun(heroClass);
+    });
+  });
+
+  // Fight button
+  const fightBtn = document.getElementById("fight-btn");
+  if (fightBtn) fightBtn.addEventListener("click", () => fight("attack"));
+
+  // Other buttons are wired via onclick in renderState (reward/gear) or separate handlers
+
+  initGame();
 });
+</script>
