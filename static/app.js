@@ -187,6 +187,7 @@ resetRunButton.addEventListener("click", async () => {
   renderState(state);
 });
 
-api("/api/state").then(renderState).catch((error) => {
-  console.error(error);
+// Initial load with player name
+getPlayerName(); // ensures name is set
+api("/api/state").then(renderState).catch(console.error);
 });
