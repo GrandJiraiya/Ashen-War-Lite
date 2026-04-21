@@ -1,1 +1,1 @@
-"" Ashen War game package ""
+"""Ashen War game package."""
