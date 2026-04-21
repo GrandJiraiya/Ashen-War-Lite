@@ -1,7 +1,3 @@
-import os
-print("ENV CHECK → SUPABASE_URL present:", bool(os.getenv("SUPABASE_URL")))
-print("ENV CHECK → SUPABASE_KEY present:", bool(os.getenv("SUPABASE_KEY")))
-
 from flask import Flask, request, jsonify, render_template
 import os
 from dotenv import load_dotenv
@@ -21,10 +17,7 @@ from supabase_client import get_supabase
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
-
-# Remove the top-level call
-# Just import the function
-from supabase_client import get_supabase
+supabase = get_supabase()
 
 # ====================== SUPABASE HELPERS ======================
 def save_player_run(player_name: str, run_state: dict):
